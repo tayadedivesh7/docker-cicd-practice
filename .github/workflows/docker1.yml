@@ -1,4 +1,4 @@
-name: Docker CI/CD — Phase 1
+name: Docker CI/CD — Phase 2
 
 on:
   push:
@@ -12,8 +12,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set image tag from commit SHA
+        id: tag
+        run: echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
       - name: Build Docker image
-        run: docker build -t myapp:latest .
+        run: docker build -t myapp:${{ steps.tag.outputs.tag }} .
 
       - name: Login to DockerHub
         uses: docker/login-action@v2
@@ -21,7 +25,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Push to DockerHub
+      - name: Push SHA tag to DockerHub
         run: |
-          docker tag myapp:latest ${{ secrets.DOCKERHUB_USERNAME }}/myapp:latest
+          docker tag myapp:${{ steps.tag.outputs.tag }} \
+            ${{ secrets.DOCKERHUB_USERNAME }}/myapp:${{ steps.tag.outputs.tag }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/myapp:${{ steps.tag.outputs.tag }}
+
+      - name: Push latest tag to DockerHub
+        run: |
+          docker tag myapp:${{ steps.tag.outputs.tag }} \
+            ${{ secrets.DOCKERHUB_USERNAME }}/myapp:latest
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/myapp:latest
